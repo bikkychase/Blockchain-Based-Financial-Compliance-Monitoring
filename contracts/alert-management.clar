@@ -1,79 +1,100 @@
-;; Audit Trail Contract
-;; Maintains record of compliance activities
+;; Alert Management Contract
+;; Handles potential compliance violations
 
 (define-data-var admin principal tx-sender)
 
-;; Constants for action types
-(define-constant ACTION_INSTITUTION_VERIFICATION u1)
-(define-constant ACTION_REQUIREMENT_ASSIGNMENT u2)
-(define-constant ACTION_TRANSACTION_SCREENING u3)
-(define-constant ACTION_ALERT_CREATION u4)
-(define-constant ACTION_ALERT_RESOLUTION u5)
+;; Enum for alert status
+(define-constant ALERT_STATUS_NEW u1)
+(define-constant ALERT_STATUS_INVESTIGATING u2)
+(define-constant ALERT_STATUS_RESOLVED u3)
+(define-constant ALERT_STATUS_FALSE_POSITIVE u4)
 
-;; Data map to store audit records
-(define-map audit-records
-  uint  ;; record-id
+;; Data map to store alerts
+(define-map alerts
+  uint  ;; alert-id
   {
-    action-type: uint,
-    performer: principal,
-    affected-entity: principal,
-    details: (string-utf8 500),
-    timestamp: uint
+    institution: principal,
+    transaction-id: uint,
+    rule-id: uint,
+    alert-status: uint,
+    creation-date: uint,
+    resolution-date: (optional uint),
+    resolution-notes: (optional (string-utf8 500))
   }
 )
 
-;; Counter for audit record IDs
-(define-data-var record-counter uint u0)
+;; Counter for alert IDs
+(define-data-var alert-counter uint u0)
 
-;; Function to record an audit entry
-(define-public (record-audit
-                (action-type uint)
-                (affected-entity principal)
-                (details (string-utf8 500)))
-  (let ((new-id (+ (var-get record-counter) u1)))
+;; Function to create a new alert
+(define-public (create-alert
+                (institution principal)
+                (transaction-id uint)
+                (rule-id uint))
+  (let ((new-id (+ (var-get alert-counter) u1)))
     ;; In a real implementation, we would verify the caller has permission
     ;; For simplicity, we're allowing any caller
 
-    (map-set audit-records
+    (map-set alerts
       new-id
       {
-        action-type: action-type,
-        performer: tx-sender,
-        affected-entity: affected-entity,
-        details: details,
-        timestamp: block-height
+        institution: institution,
+        transaction-id: transaction-id,
+        rule-id: rule-id,
+        alert-status: ALERT_STATUS_NEW,
+        creation-date: block-height,
+        resolution-date: none,
+        resolution-notes: none
       }
     )
-    (var-set record-counter new-id)
+    (var-set alert-counter new-id)
     (ok new-id)
   )
 )
 
-;; Function to get audit record details
-(define-read-only (get-audit-record (record-id uint))
-  (map-get? audit-records record-id)
+;; Function to update alert status (admin or institution only)
+(define-public (update-alert-status
+                (alert-id uint)
+                (new-status uint)
+                (notes (optional (string-utf8 500))))
+  (begin
+    (match (map-get? alerts alert-id)
+      alert-data
+        (begin
+          ;; In a real implementation, we would verify tx-sender is admin or the institution
+          ;; For simplicity, we're allowing any caller
+
+          (map-set alerts
+            alert-id
+            (merge alert-data {
+              alert-status: new-status,
+              resolution-date: (if (or (is-eq new-status ALERT_STATUS_RESOLVED)
+                                      (is-eq new-status ALERT_STATUS_FALSE_POSITIVE))
+                                  (some block-height)
+                                  (get resolution-date alert-data)),
+              resolution-notes: notes
+            })
+          )
+          (ok true)
+        )
+      (err u101) ;; Alert not found
+    )
+  )
 )
 
-;; Function to get audit records by entity
-(define-read-only (get-entity-audit-records (entity principal))
-  ;; In a real implementation, this would return a list of audit records for the entity
+;; Function to get alert details
+(define-read-only (get-alert-details (alert-id uint))
+  (map-get? alerts alert-id)
+)
+
+;; Function to get alerts by institution
+(define-read-only (get-institution-alerts (institution principal))
+  ;; In a real implementation, this would return a list of alerts for the institution
   ;; For simplicity, we return just a count
-  (get-entity-audit-count entity)
+  (get-institution-alert-count institution)
 )
 
-;; Helper function to count audit records for an entity
-(define-read-only (get-entity-audit-count (entity principal))
-  u0 ;; Placeholder - in a real implementation this would count records
-)
-
-;; Function to get audit records by action type
-(define-read-only (get-action-type-audit-records (action-type uint))
-  ;; In a real implementation, this would return a list of audit records for the action type
-  ;; For simplicity, we return just a count
-  (get-action-type-audit-count action-type)
-)
-
-;; Helper function to count audit records for an action type
-(define-read-only (get-action-type-audit-count (action-type uint))
-  u0 ;; Placeholder - in a real implementation this would count records
+;; Helper function to count alerts for an institution
+(define-read-only (get-institution-alert-count (institution principal))
+  u0 ;; Placeholder - in a real implementation this would count alerts
 )
