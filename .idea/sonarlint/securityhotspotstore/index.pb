@@ -7,3 +7,5 @@ J
 contracts/audit-trail.clar,b/6/b6671a06cd13e1dc7096347f063b75b96e221363
 W
 'contracts/institution-verification.clar,d/d/dd6f29d581e4fc80d30e9eb12d64363ad190bf89
+U
+%contracts/regulatory-requirement.clar,c/1/c1933b140952a509ee770549ffc1e089c7236d9f
