@@ -9,3 +9,5 @@ W
 'contracts/institution-verification.clar,d/d/dd6f29d581e4fc80d30e9eb12d64363ad190bf89
 U
 %contracts/regulatory-requirement.clar,c/1/c1933b140952a509ee770549ffc1e089c7236d9f
+T
+$contracts/transaction-screening.clar,2/5/2552a27c436f70e24d37784d88b8d754d03b7358
